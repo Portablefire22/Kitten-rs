@@ -1,0 +1,9 @@
+[package]
+name = "kitten_rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tiny_http = "0.11"
+maud = "0.26.0"
+ascii = "1.1"
