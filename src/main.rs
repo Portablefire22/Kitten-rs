@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::{Arc, Mutex}, thread::spawn};
+use std::{fmt::Debug, sync::{Arc, Mutex, MutexGuard}, thread::spawn};
 mod projects;
 use ascii::AsciiString;
 use maud::{html, Markup};
@@ -42,8 +42,11 @@ fn main() {
 fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>>) {
     for request in server.incoming_requests() {
         println!("Request Type: {:?} \nUrl: {:?} \nHeaders: {:?}\n", request.method(), request.url(), request.headers());
-        match request.url() {
-            "" | "/" => {
+        let parts = request.url().split("/");
+        let parts = parts.collect::<Vec<&str>>();
+        dbg!(&parts);
+        match parts[1] {
+            "" => {
                 let html = index().into_string();
                 let response = Response::from_string(html);
                 let response = response.with_header(tiny_http::Header {
@@ -53,7 +56,21 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
 
                 let _ = request.respond(response);
             },
-            "/projects" => {
+            "projects" => if parts.get(2).is_some() {
+                let projs = project_handler.lock().unwrap();    
+                if projs.projects.iter().any(|p| p.title == parts[2]) {
+                    let html = render_project(projs, parts[2]).into_string();
+                    
+                    let response = Response::from_string(html);
+                    let response = response.with_header(tiny_http::Header {
+                        field: "Content-Type".parse().unwrap(),
+                        value: AsciiString::from_ascii("text/html; charset=utf8").unwrap(),
+                    });
+                    let _ = request.respond(response);
+                } else {
+                    serve_404(request);
+                }
+            } else {
                 let html = projects(project_handler.clone()).into_string();
                 let response = Response::from_string(html);
                 let response = response.with_header(tiny_http::Header {
@@ -77,11 +94,23 @@ fn index() -> maud::Markup {
     }
 }
 
+fn render_project(project_handler: MutexGuard<ProjectHandler>, project_title: &str) -> maud::Markup {
+    let project = project_handler.projects.iter().filter(|p| p.title.eq(project_title)).collect::<Vec<&projects::Project>>();
+    let project = project.first().unwrap();
+    html! {
+        h1 { (project.title) }
+        @let project_time: chrono::DateTime<chrono::Utc> = chrono::DateTime::from_timestamp_millis(project.timestamp as i64).unwrap();
+        @let localised: chrono::DateTime<chrono::Local> = project_time.into();
+        p { small { (localised.format("%Y-%m-%d %H:%M")) }}
+        p { (project.summary) }
+    }
+}
+
 fn projects(project_handler: Arc<Mutex<ProjectHandler>>) -> maud::Markup {
     let project_bind = project_handler.lock().expect("Could not unlock project handler mutex");
     html! {
         @for proj in &project_bind.projects {
-            h1 { (proj.title) }
+            h1 { a href = {"./projects/"(proj.title)} {(proj.title)} }
             @let project_time: chrono::DateTime<chrono::Utc> = chrono::DateTime::from_timestamp_millis(proj.timestamp as i64).unwrap();
             @let localised: chrono::DateTime<chrono::Local> = project_time.into();
             p { small { (localised.format("%Y-%m-%d %H:%M")) }}
