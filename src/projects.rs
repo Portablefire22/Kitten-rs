@@ -1,26 +1,49 @@
 use core::fmt;
-use std::{fmt::Debug, fs, path::Path};
+use std::{fmt::Debug, fs};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct Project {
+    /// Project Title
     pub title: String, 
+    /// Unix timestamp for project creation
     pub timestamp: isize,
+    /// Short summary of project 
     pub summary: String,
-    pub content: String, // Path to markdown file 
-    pub image: Option<String>, // Path to project icon
+    /// Project's markdown file path
+    pub content: String,
+    /// Project's icon file path 
+    pub image: Option<String>,
 }
 
 
 impl Project {
+    /// Creates Project struct from a given file directory
     fn from_file(path: &str) -> Self {
-        let contents = fs::read_to_string(path).expect("Could not find file at '{path}'");
+        let contents = fs::read_to_string(path).expect(&format!("Could not find file at '{path}'"));
 
-        let conf: Project = toml::from_str(&contents).expect("Could not convert '{path}' to project");
+        let conf: Project = toml::from_str(&contents).expect(&format!("Could not convert '{path}' to project"));
         conf
     }
-}
 
+    /// Returns the project's content markdown file in the form of html
+    pub fn html_from_content(&self) -> maud::Markup {
+        let contents = fs::read_to_string(&self.content).expect(&format!("Could not find file at '{}'", &self.content));
+        
+        maud::PreEscaped(comrak::markdown_to_html(&contents, &comrak::Options::default()))
+    }
+
+    /// Formats project's unix timestamp to readable UTC
+    pub fn formatted_time(&self) -> String {
+        let project_time = chrono::DateTime::from_timestamp_millis(self.timestamp as i64);
+        match project_time {
+            Some(time) => {
+                time.format("%Y-%m-%d %H:%M").to_string()
+            }, 
+            None => "NULL".to_string()
+        }
+    }
+}
 
 pub struct ProjectHandler {
     pub projects: Vec<Project>
@@ -33,8 +56,9 @@ impl ProjectHandler {
         }
     }
 
+    /// Loads all project TOMLs from the given directory to the handler's project vector
     pub fn load_projects(&mut self, path: &str) {
-        let paths = fs::read_dir(path).expect("Could not read given directory '{path}'");
+        let paths = fs::read_dir(path).expect(&format!("Could not read given directory '{path}'"));
         for p in paths {
             let t = p.unwrap();
             match t.path().extension() {

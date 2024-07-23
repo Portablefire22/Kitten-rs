@@ -1,7 +1,7 @@
-use std::{fmt::Debug, sync::{Arc, Mutex, MutexGuard}, thread::spawn};
+use std::{sync::{Arc, Mutex, MutexGuard}, thread::spawn};
 mod projects;
 use ascii::AsciiString;
-use maud::{html, Markup};
+use maud::html;
 use projects::ProjectHandler;
 use tiny_http::{Request, Response, Server};
 
@@ -42,9 +42,12 @@ fn main() {
 fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>>) {
     for request in server.incoming_requests() {
         println!("Request Type: {:?} \nUrl: {:?} \nHeaders: {:?}\n", request.method(), request.url(), request.headers());
+        
         let parts = request.url().split("/");
         let parts = parts.collect::<Vec<&str>>();
         dbg!(&parts);
+
+        // Routing
         match parts[1] {
             "" => {
                 let html = index().into_string();
@@ -56,11 +59,14 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
 
                 let _ = request.respond(response);
             },
+            "favicon.ico" => {
+                let response = Response::empty(418); // No favicon :3
+                let _ = request.respond(response);
+            },
             "projects" => if parts.get(2).is_some() {
                 let projs = project_handler.lock().unwrap();    
                 if projs.projects.iter().any(|p| p.title == parts[2]) {
                     let html = render_project(projs, parts[2]).into_string();
-                    
                     let response = Response::from_string(html);
                     let response = response.with_header(tiny_http::Header {
                         field: "Content-Type".parse().unwrap(),
@@ -99,10 +105,9 @@ fn render_project(project_handler: MutexGuard<ProjectHandler>, project_title: &s
     let project = project.first().unwrap();
     html! {
         h1 { (project.title) }
-        @let project_time: chrono::DateTime<chrono::Utc> = chrono::DateTime::from_timestamp_millis(project.timestamp as i64).unwrap();
-        @let localised: chrono::DateTime<chrono::Local> = project_time.into();
-        p { small { (localised.format("%Y-%m-%d %H:%M")) }}
+        p { small { (project.formatted_time()) }}
         p { (project.summary) }
+        p { (project.html_from_content())}
     }
 }
 
@@ -111,9 +116,7 @@ fn projects(project_handler: Arc<Mutex<ProjectHandler>>) -> maud::Markup {
     html! {
         @for proj in &project_bind.projects {
             h1 { a href = {"./projects/"(proj.title)} {(proj.title)} }
-            @let project_time: chrono::DateTime<chrono::Utc> = chrono::DateTime::from_timestamp_millis(proj.timestamp as i64).unwrap();
-            @let localised: chrono::DateTime<chrono::Local> = project_time.into();
-            p { small { (localised.format("%Y-%m-%d %H:%M")) }}
+            p { small { (proj.formatted_time()) }}
             p { (proj.summary) }
         }
     }

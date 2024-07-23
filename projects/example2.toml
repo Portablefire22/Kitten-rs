@@ -1,4 +1,4 @@
 title = "OwO"
 timestamp = 1721744588
 summary = "Testing owo"
-content = "./example.toml"
+content = "projects/example2/content.md"
