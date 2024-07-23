@@ -1,0 +1,4 @@
+title = "Example"
+timestamp = 1721745500734
+summary = "Example project to test project loading"
+content = "projects/example/content.md"
