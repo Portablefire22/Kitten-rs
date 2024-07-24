@@ -1,3 +1,4 @@
 ### AWOOOOOOOOOOOOOO
 
-*Nyaaa~*
+![Lilith](../assets/lilith.jpg)
+![Cutie](../assets/cutie.jpg)

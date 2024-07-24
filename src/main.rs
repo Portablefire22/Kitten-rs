@@ -1,4 +1,4 @@
-use std::{sync::{Arc, Mutex, MutexGuard}, thread::spawn};
+use std::{fs::File, path::Path, sync::{Arc, Mutex, MutexGuard}, thread::spawn};
 mod projects;
 use ascii::AsciiString;
 use maud::html;
@@ -29,13 +29,6 @@ fn main() {
             Ok(_) => (),
         }
     }
-
-    // for request in server.incoming_requests() {
-    //     println!("{:?} | {:?} | {:?}", request.method(), request.url(), request.headers());
-    //     
-    //     let response = Response::from_string("Hello World!");
-    //     request.respond(response);
-    // }
 }
 
 
@@ -50,7 +43,7 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
         // Routing
         match parts[1] {
             "" => {
-                let html = index().into_string();
+                let html = construct_page(index(), "").into_string();
                 let response = Response::from_string(html);
                 let response = response.with_header(tiny_http::Header {
                     field: "Content-Type".parse().unwrap(),
@@ -63,10 +56,97 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
                 let response = Response::empty(418); // No favicon :3
                 let _ = request.respond(response);
             },
+            "fonts" => if parts.get(2).is_some() && parts.get(3).is_some() {
+                let pat = format!("{}/{}/{}/{}", std::env::current_dir().unwrap().display(), parts[1], parts[2], parts[3]);
+                match File::open(pat) {
+                    Ok(file) => {
+                        let mut response = Response::from_file(file);
+                        response = response.with_header(tiny_http::Header {
+                            field: "Content-Type".parse().unwrap(),
+                            value: "font/ttf".parse().unwrap()
+                        });
+                        let _ = request.respond(response);
+                    },
+                    Err(e) => {
+                        println!("{e:?}");
+                        let response = Response::empty(404);
+                        let _ = request.respond(response);
+                    }
+                }
+            } else {
+                let response = Response::empty(404);
+                let _ = request.respond(response);
+            },
+            "css" => if parts.get(2).is_some() {
+                let pat = format!("{}/{}/{}", std::env::current_dir().unwrap().display(), parts[1], parts[2]);
+                match File::open(pat) {
+                    Ok(file) => {
+                        let mut response = Response::from_file(file);
+                        response = response.with_header(tiny_http::Header {
+                            field: "Content-Type".parse().unwrap(),
+                            value: "text/css".parse().unwrap()
+                        });
+                        let _ = request.respond(response);
+                    },
+                    Err(e) => {
+                        println!("{e:?}");
+                        let response = Response::empty(404);
+                        let _ = request.respond(response);
+                    }
+                }
+            } else {
+                let response = Response::empty(404);
+                let _ = request.respond(response);
+            },
+            "assets" => if parts.get(2).is_some() {
+                let pat = format!("{}/{}/{}", std::env::current_dir().unwrap().display(), parts[1], parts[2]);
+                match File::open(&pat) {
+                     Ok(file) => {
+                        let mut response = Response::from_file(file);
+                        let tmp = Path::new(&pat);
+                        dbg!("{:?}", &tmp.extension());
+                        match tmp.extension() {
+                            Some(ext) => {
+                                response = match ext.to_str().unwrap() {
+                                    "png" => response.with_header(tiny_http::Header {
+                                        field: "Content-Type".parse().unwrap(),
+                                        value: "image/png".parse().unwrap(),
+                                    }),
+                                    "jpg" | "jpeg" => response.with_header(tiny_http::Header {
+                                        field: "Content-Type".parse().unwrap(),
+                                        value: "image/jpeg".parse().unwrap(),
+                                    }),
+                                    "webp" => response.with_header(tiny_http::Header {
+                                        field: "Content-Type".parse().unwrap(),
+                                        value: "image/webp".parse().unwrap(),
+                                    }),
+                                    _ => response.with_header(tiny_http::Header {
+                                        field: "Content-Type".parse().unwrap(),
+                                        value: "image/example".parse().unwrap(),
+                                    }),
+                                };
+                                let _ = request.respond(response);
+                            },
+                            None => {
+                                let response = Response::empty(400);
+                                let _ = request.respond(response);
+                            } 
+                        }
+                    },
+                    Err(e) => {
+                        println!("{e:?}");
+                        let response = Response::empty(404);
+                        let _ = request.respond(response);
+                    }
+                }
+            } else {
+                let response = Response::empty(404);
+                let _ = request.respond(response);
+            },
             "projects" => if parts.get(2).is_some() {
                 let projs = project_handler.lock().unwrap();    
                 if projs.projects.iter().any(|p| p.title == parts[2]) {
-                    let html = render_project(projs, parts[2]).into_string();
+                    let html = construct_page(render_project(projs, parts[2]), parts[1]).into_string();
                     let response = Response::from_string(html);
                     let response = response.with_header(tiny_http::Header {
                         field: "Content-Type".parse().unwrap(),
@@ -77,7 +157,7 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
                     serve_404(request);
                 }
             } else {
-                let html = projects(project_handler.clone()).into_string();
+                let html = construct_page(projects(project_handler.clone()), parts[1]).into_string();
                 let response = Response::from_string(html);
                 let response = response.with_header(tiny_http::Header {
                     field: "Content-Type".parse().unwrap(),
@@ -93,10 +173,61 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
     }
 }
 
+/// Inserts given html to a hard-coded template 
+fn construct_page(content: maud::Markup, url: &str) -> maud::Markup {
+    html! {
+        (maud::DOCTYPE)
+        body {
+            link href="/fonts/Rubik/Rubik-VariableFont_wght.ttf" rel="stylesheet";
+            link href="/css/styles.css" rel="stylesheet";
+            title {"Kitten.rs"};
+            
+            (navbar(url))
+            (content)
+            (footer())
+        }
+    }
+}
+
+fn footer() -> maud::Markup {
+    html! {
+
+    }
+}
+
+fn navbar(active_page: &str) -> maud::Markup {
+    html! {
+        div."navigation" {
+            div."nav-item" {
+                @if active_page == "" {
+                    a."active" href="/" {"Home"}
+                } @else {
+                    a href="/" {"Home"}
+                }
+            }
+            div."nav-item" {
+                @if active_page == "projects" {
+                    a."active" href="/projects" {"Projects"}
+                } @else {
+                    a href="/projects" {"Projects"}
+                }
+            }
+            div."nav-item" {
+                @if active_page == "about" {
+                    a."active" href="/about" {"About"}
+                } @else {
+                    a href="/about" {"About"}
+                }
+            }  
+        }
+        hr;
+    }
+}
+
 fn index() -> maud::Markup {
-    html! { 
+    html! {
+       
         h1 { "Kitten.rs" }
-        a href = "./projects" {"Projects"}
     }
 }
 

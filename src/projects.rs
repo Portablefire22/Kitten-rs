@@ -45,6 +45,7 @@ impl Project {
     }
 }
 
+/// Contains vector of projects and handles loading/updating stored projects
 pub struct ProjectHandler {
     pub projects: Vec<Project>
 }
