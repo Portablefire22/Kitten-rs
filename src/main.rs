@@ -193,7 +193,14 @@ fn construct_page(content: maud::Markup, url: &str) -> maud::Markup {
 
 fn footer() -> maud::Markup {
     html! {
-
+        div."footer" {
+            hr;
+            div."footer-links" {
+                a href="https://github.com/Portablefire22" {"Github"}
+                a href="https://www.youtube.com/@YuumiOTP" {"Youtube"}
+                a href="https://github.com/Portablefire22/Kitten-rs" {"Source"}
+            }
+        }
     }
 }
 
