@@ -238,10 +238,17 @@ fn render_project(project_handler: MutexGuard<ProjectHandler>, project_title: &s
     let project = project_handler.projects.iter().filter(|p| p.title.eq(project_title)).collect::<Vec<&projects::Project>>();
     let project = project.first().unwrap();
     html! {
-        h1 { (project.title) }
-        p { small { (project.formatted_time()) }}
-        p { (project.summary) }
-        p { (project.html_from_content())}
+
+        div."content-container" {
+            h1 {(project.title)}
+            small."time" {"UTC: "(project.formatted_time())}
+            div."project-text"{
+                @if project.image.is_some() {
+                    img."icon" src={(project.image.clone().unwrap())};
+                }
+                p {(project.html_from_content())}
+            }
+        }
     }
 }
 

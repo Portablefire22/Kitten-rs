@@ -127,3 +127,42 @@ a {
   margin: auto;
 }
 
+.content-container {
+  width: 90%;
+  background-color: #383f47;
+  height: auto;
+  min-height: 10em;
+  margin: 1em auto 1em auto;
+  border-radius: 0.1em;
+  padding: 1em;
+}
+
+.content-container h1 {
+  margin-bottom: 0.25rem;
+}
+
+.project-text {
+  height: fit-content;
+  min-height: 10em;
+}
+
+.content-container .icon {
+  float: right;
+  max-width: 10em;
+  max-height: 10em;
+  border-radius: 0.25em;
+  margin-left: 0.25em;
+}
+
+.content-container img {
+  max-width: 50%;
+  display: block;
+  margin: auto;
+  border-radius: 0.25em;
+}
+
+.project-text p {
+  word-wrap: break-word;
+  color: whitesmoke;
+}
+
