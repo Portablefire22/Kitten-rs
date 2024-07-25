@@ -1,4 +1,5 @@
 title = "Example"
 timestamp = 1721745500734
-summary = "Example project to test project loading"
-content = "projects/example/content.md"
+summary = "Example project to test project loading sadasdas dsa das dsad "
+content = "./projects/example/content.md"
+image = "/assets/lilith.jpg"

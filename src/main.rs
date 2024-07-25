@@ -31,14 +31,16 @@ fn main() {
     }
 }
 
+/*
+*   TODO Add a caching system
+*/
 
 fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>>) {
     for request in server.incoming_requests() {
-        println!("Request Type: {:?} \nUrl: {:?} \nHeaders: {:?}\n", request.method(), request.url(), request.headers());
+        // println!("Request Type: {:?} \nUrl: {:?} \nHeaders: {:?}\n", request.method(), request.url(), request.headers());
         
         let parts = request.url().split("/");
         let parts = parts.collect::<Vec<&str>>();
-        dbg!(&parts);
 
         // Routing
         match parts[1] {
@@ -63,7 +65,7 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
                         let mut response = Response::from_file(file);
                         response = response.with_header(tiny_http::Header {
                             field: "Content-Type".parse().unwrap(),
-                            value: "font/ttf".parse().unwrap()
+                            value: "text/css".parse().unwrap()
                         });
                         let _ = request.respond(response);
                     },
@@ -104,7 +106,7 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
                      Ok(file) => {
                         let mut response = Response::from_file(file);
                         let tmp = Path::new(&pat);
-                        dbg!("{:?}", &tmp.extension());
+                        // dbg!("{:?}", &tmp.extension());
                         match tmp.extension() {
                             Some(ext) => {
                                 response = match ext.to_str().unwrap() {
@@ -228,6 +230,7 @@ fn index() -> maud::Markup {
     html! {
        
         h1 { "Kitten.rs" }
+        a href = "./projects" {"Projects"}
     }
 }
 
@@ -246,9 +249,18 @@ fn projects(project_handler: Arc<Mutex<ProjectHandler>>) -> maud::Markup {
     let project_bind = project_handler.lock().expect("Could not unlock project handler mutex");
     html! {
         @for proj in &project_bind.projects {
-            h1 { a href = {"./projects/"(proj.title)} {(proj.title)} }
-            p { small { (proj.formatted_time()) }}
-            p { (proj.summary) }
+            div."content" {
+                a."project-link" href={"/projects/"(proj.title)} {
+                    div."project-display" {
+                        h1 {(proj.title)}
+                        small."time" {"UTC: "(proj.formatted_time())}
+                        @if proj.image.is_some() {
+                            img src={(proj.image.clone().unwrap())};
+                        }
+                        p {(proj.summary)}
+                    }
+                }
+            }
         }
     }
 }
