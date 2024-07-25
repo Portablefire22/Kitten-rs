@@ -158,7 +158,7 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
                     });
                     let _ = request.respond(response);
                 } else {
-                    serve_404(request);
+                    serve_error(request, 404);
                 }
             } else {
                 let html = construct_page(projects(project_handler.clone()), parts[1]).into_string();
@@ -171,7 +171,7 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
                 let _ = request.respond(response);
             },
             _ => {
-                serve_404(request);
+                serve_error(request, 404);
             }
         }
     }
@@ -281,8 +281,22 @@ fn projects(project_handler: Arc<Mutex<ProjectHandler>>) -> maud::Markup {
     }
 }
 
-fn serve_404(request: Request) {
-    let mut resp = Response::from_string("404");
+fn error(code: u16) -> maud::Markup {
+    html!{div."error" {
+            h1 { (code) }
+        }
+    }
+}
+
+fn serve_error(request: Request, code: u16) {
+    let html = construct_page(error(code), "error").into_string();
+    let mut resp = Response::from_string(html);
     resp = resp.with_status_code(404);
+    resp = resp.with_header(tiny_http::Header {
+                    field: "Content-Type".parse().unwrap(),
+                    value: AsciiString::from_ascii("text/html; charset=utf8").unwrap(),
+                });
+
+
     let _ = request.respond(resp);
 }
