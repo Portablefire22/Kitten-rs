@@ -236,8 +236,8 @@ fn navbar(active_page: &str) -> maud::Markup {
 fn index() -> maud::Markup {
     html! {
        
-        h1 { "Kitten.rs" }
-        a href = "./projects" {"Projects"}
+        h1."c" { "Kitten.rs" }
+        h2."c" { "Under Construction" }
     }
 }
 

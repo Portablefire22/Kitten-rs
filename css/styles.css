@@ -6,6 +6,10 @@ body {
   min-height: 100vh;
 }
 
+.c {
+  margin: auto;
+  text-align: center;
+}
 
 hr {
   width: 90%;
