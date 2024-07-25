@@ -1,5 +1,5 @@
-title = "Example"
-timestamp = 1721745500734
-summary = "Example project to test project loading sadasdas dsa das dsad "
+title = "Markdown Talk"
+timestamp = 1721929535022
+summary = "Markdown explanation"
 content = "./projects/example/content.md"
 image = "/assets/lilith.jpg"

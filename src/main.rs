@@ -40,7 +40,7 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
         // println!("Request Type: {:?} \nUrl: {:?} \nHeaders: {:?}\n", request.method(), request.url(), request.headers());
         
         let parts = request.url().split("/");
-        let parts = parts.collect::<Vec<&str>>();
+        let mut parts = parts.collect::<Vec<&str>>();
 
         // Routing
         match parts[1] {
@@ -146,6 +146,8 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
                 let _ = request.respond(response);
             },
             "projects" => if parts.get(2).is_some() {
+                let temp = parts[2].replace("%20", " ");
+                parts[2] = &temp;
                 let projs = project_handler.lock().unwrap();    
                 if projs.projects.iter().any(|p| p.title == parts[2]) {
                     let html = construct_page(render_project(projs, parts[2]), parts[1]).into_string();
