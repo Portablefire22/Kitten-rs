@@ -1,5 +1,6 @@
 use core::fmt;
 use std::{fmt::Debug, fs};
+use maud::html;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -28,9 +29,21 @@ impl Project {
 
     /// Returns the project's content markdown file in the form of html
     pub fn html_from_content(&self) -> maud::Markup {
-        let contents = fs::read_to_string(&self.content).expect(&format!("Could not find file at '{}'", &self.content));
+        let contents = fs::read_to_string(&self.content);
+        match contents {
+            Ok(cont) => {
+                maud::PreEscaped(comrak::markdown_to_html(&cont, &comrak::Options::default()))
+            },
+            Err(_) => {
+                html! {
+                    div."error" {
+                        h1 { "404" }
+                        p { "Content file could not be loaded" }
+                    }
+                }
+            }
+        }
         
-        maud::PreEscaped(comrak::markdown_to_html(&contents, &comrak::Options::default()))
     }
 
     /// Formats project's unix timestamp to readable UTC

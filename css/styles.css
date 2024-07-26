@@ -178,6 +178,10 @@ a {
   color: whitesmoke;
 }
 
+.project-text a {
+  color: #5BCEFA;
+}
+
 .footer {
   width: 100%;
   margin: auto 0;
