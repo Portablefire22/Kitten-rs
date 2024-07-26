@@ -37,7 +37,7 @@ fn main() {
 
 fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>>) {
     for request in server.incoming_requests() {
-        // println!("Request Type: {:?} \nUrl: {:?} \nHeaders: {:?}\n", request.method(), request.url(), request.headers());
+        println!("Request Type: {:?} \nUrl: {:?} \nHeaders: {:?}\n", request.method(), request.url(), request.headers());
         
         let parts = request.url().split("/");
         let mut parts = parts.collect::<Vec<&str>>();
