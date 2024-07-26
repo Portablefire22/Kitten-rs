@@ -182,10 +182,9 @@ fn construct_page(content: maud::Markup, url: &str) -> maud::Markup {
     html! {
         (maud::DOCTYPE)
         body {
-            link href="/fonts/Rubik/Rubik-VariableFont_wght.ttf" rel="stylesheet";
-            link href="/css/styles.css" rel="stylesheet";
+            link rel="preload" href="/css/styles.css" as="style";
+            link rel="stylesheet" href="/css/styles.css";
             title {"Kitten.rs"};
-            
             (navbar(url))
             (content)
             (footer())
