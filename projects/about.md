@@ -5,8 +5,8 @@ Secondly, welcome! :3
 I still have optimism for the future and hate how corporate the internet has become, which is why I refuse to not act silly x3  
 Despite having most of my socials linked on the bottom, I still feel like it's a large enough disconnect to act different :P  
 
-I have absolutely 0 professional experience when it comes to programming, with the extent of my tested professionalism is 
-nicely complaining directly at my group members in a university group project, and will 100% show in my code (and writing) quality  :3
+I have absolutely 0 professional experience when it comes to programming, with the extent of my tested professionalism being 
+nicely complaining directly at my group members in a university group project, and that will 100% show in my code (and writing) quality  :3
 
 ## Website
 

@@ -216,8 +216,7 @@ fn construct_page(content: maud::Markup, url: &str) -> maud::Markup {
     html! {
         (maud::DOCTYPE)
         body {
-            link rel="preload" href="/css/styles.css" as="style";
-            link rel="stylesheet" href="/css/styles.css";
+            link rel="preload stylesheet" href="/css/styles.css" as="style" type="text/css" crossorigin="anonymous";
             title {"Kitten.rs"};
             (navbar(url))
             (content)
