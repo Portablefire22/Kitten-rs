@@ -1,5 +1,6 @@
 use core::fmt;
 use std::{fmt::Debug, fs};
+use comrak::plugins::syntect::SyntectAdapterBuilder;
 use maud::html;
 use serde::Deserialize;
 
@@ -30,9 +31,13 @@ impl Project {
     /// Returns the project's content markdown file in the form of html
     pub fn html_from_content(&self) -> maud::Markup {
         let contents = fs::read_to_string(&self.content);
+        let mut plugins = comrak::Plugins::default();
+        let builder = SyntectAdapterBuilder::new().theme("base16-ocean.dark");
+        let adapter = builder.build();
+        plugins.render.codefence_syntax_highlighter = Some(&adapter);
         match contents {
             Ok(cont) => {
-                maud::PreEscaped(comrak::markdown_to_html(&cont, &comrak::Options::default()))
+                maud::PreEscaped(comrak::markdown_to_html_with_plugins(&cont, &comrak::Options::default(), &plugins))
             },
             Err(_) => {
                 html! {

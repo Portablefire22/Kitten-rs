@@ -1,6 +1,7 @@
-use std::{fs::File, path::Path, sync::{Arc, Mutex, MutexGuard}, thread::spawn};
+use std::{fs::{self, File}, path::Path, sync::{Arc, Mutex, MutexGuard}, thread::spawn};
 mod projects;
 use ascii::AsciiString;
+use comrak::plugins::syntect::SyntectAdapterBuilder;
 use maud::html;
 use projects::ProjectHandler;
 use tiny_http::{Request, Response, Server};
@@ -170,10 +171,43 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
 
                 let _ = request.respond(response);
             },
+            "about" => {
+                let html = construct_page(about(), parts[1]).into_string();
+                let response = Response::from_string(html);
+                let response = response.with_header(tiny_http::Header {
+                    field: "Content-Type".parse().unwrap(),
+                    value: AsciiString::from_ascii("text/html; charset=utf8").unwrap(),
+                });
+
+                let _ = request.respond(response);
+            },
             _ => {
                 serve_error(request, 404);
             }
         }
+    }
+}
+
+fn about() -> maud::Markup {
+    let contents = fs::read_to_string("projects/about.md");
+    let mut plugins = comrak::Plugins::default();
+    let builder = SyntectAdapterBuilder::new().theme("base16-ocean.dark");
+    let adapter = builder.build();
+    plugins.render.codefence_syntax_highlighter = Some(&adapter);
+    match contents {
+        Ok(cont) => {
+            html! {
+                div."content-container" {
+                    h1 {"About"}
+                    div."project-text"{
+                        (maud::PreEscaped(comrak::markdown_to_html_with_plugins(&cont,
+                            &comrak::Options::default(),
+                            &plugins)))
+                    }    
+                }
+            }
+        },
+        Err(e) => error(404),
     }
 }
 
