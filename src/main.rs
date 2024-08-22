@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read, path::Path, sync::{Arc, Mutex, MutexGuard}, thread::spawn};
+use std::{fs::{self, File}, io::Read, path::Path, sync::{Arc, Mutex, MutexGuard}, thread::spawn};
 mod projects;
 use ascii::AsciiString;
 use comrak::plugins::syntect::SyntectAdapterBuilder;
