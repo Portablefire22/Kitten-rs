@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, path::Path, sync::{Arc, Mutex, MutexGuard}, thread::spawn};
+use std::{fs::File, io::Read, path::Path, sync::{Arc, Mutex, MutexGuard}, thread::spawn};
 mod projects;
 use ascii::AsciiString;
 use comrak::plugins::syntect::SyntectAdapterBuilder;
@@ -180,6 +180,21 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
                 });
 
                 let _ = request.respond(response);
+            },
+            ".well-known" => if parts.get(2).is_some() {
+               if parts[2] == "discord" {
+                    let mut file = File::open("assets/discord").unwrap();
+                    let mut cont = String::new();
+                    file.read_to_string(&mut cont).unwrap();
+                    let response = Response::from_string(cont);
+                    let response = response.with_header(tiny_http::Header {
+                        field: "Content-Type".parse().unwrap(),
+                        value: AsciiString::from_ascii("text/html; charset=utf8").unwrap(),
+                    });
+                    let _ = request.respond(response);
+                } 
+            } else {
+                serve_error(request, 404);
             },
             _ => {
                 serve_error(request, 404);
