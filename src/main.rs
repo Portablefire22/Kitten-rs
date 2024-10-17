@@ -1,4 +1,10 @@
-use std::{fs::{self, File}, io::Read, path::Path, sync::{Arc, Mutex, MutexGuard}, thread::spawn};
+use std::{
+    fs::{self, File},
+    io::Read,
+    path::Path,
+    sync::{Arc, RwLock, RwLockReadGuard},
+    thread::spawn,
+};
 mod projects;
 use ascii::AsciiString;
 use comrak::plugins::syntect::SyntectAdapterBuilder;
@@ -9,12 +15,18 @@ use tiny_http::{Request, Response, Server};
 fn main() {
     let server = Arc::new(Server::http("0.0.0.0:8080").unwrap());
 
-    let project_handler = Arc::new(Mutex::new(ProjectHandler::new()));
-    project_handler.lock().unwrap().load_projects("./projects/");
+    let project_handler = Arc::new(RwLock::new(ProjectHandler::new()));
+    project_handler
+        .write()
+        .unwrap()
+        .load_projects("./projects/");
 
     let mut handles = Vec::new();
 
-    for thread_number in 0..std::thread::available_parallelism().expect("Failed to get available paralleism").into() {
+    for thread_number in 0..std::thread::available_parallelism()
+        .expect("Failed to get available paralleism")
+        .into()
+    {
         println!("Starting thread: {thread_number}");
 
         let serv = server.clone();
@@ -26,7 +38,7 @@ fn main() {
         match handle.join() {
             Err(e) => {
                 println!("{e:?}");
-            },
+            }
             Ok(_) => (),
         }
     }
@@ -36,10 +48,15 @@ fn main() {
 *   TODO Add a caching system
 */
 
-fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>>) {
+fn server_thread(server: Arc<Server>, project_handler: Arc<RwLock<ProjectHandler>>) {
     for request in server.incoming_requests() {
-        println!("Request Type: {:?} \nUrl: {:?} \nHeaders: {:?}\n", request.method(), request.url(), request.headers());
-        
+        println!(
+            "Request Type: {:?} \nUrl: {:?} \nHeaders: {:?}\n",
+            request.method(),
+            request.url(),
+            request.headers()
+        );
+
         let parts = request.url().split("/");
         let mut parts = parts.collect::<Vec<&str>>();
 
@@ -54,123 +71,148 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
                 });
 
                 let _ = request.respond(response);
-            },
+            }
             "favicon.ico" => {
                 let response = Response::empty(418); // No favicon :3
                 let _ = request.respond(response);
-            },
-            "fonts" => if parts.get(2).is_some() && parts.get(3).is_some() {
-                let pat = format!("{}/{}/{}/{}", std::env::current_dir().unwrap().display(), parts[1], parts[2], parts[3]);
-                match File::open(pat) {
-                    Ok(file) => {
-                        let mut response = Response::from_file(file);
-                        response = response.with_header(tiny_http::Header {
-                            field: "Content-Type".parse().unwrap(),
-                            value: "text/css".parse().unwrap()
-                        });
-                        let _ = request.respond(response);
-                    },
-                    Err(e) => {
-                        println!("{e:?}");
-                        let response = Response::empty(404);
-                        let _ = request.respond(response);
-                    }
-                }
-            } else {
-                let response = Response::empty(404);
-                let _ = request.respond(response);
-            },
-            "css" => if parts.get(2).is_some() {
-                let pat = format!("{}/{}/{}", std::env::current_dir().unwrap().display(), parts[1], parts[2]);
-                match File::open(pat) {
-                    Ok(file) => {
-                        let mut response = Response::from_file(file);
-                        response = response.with_header(tiny_http::Header {
-                            field: "Content-Type".parse().unwrap(),
-                            value: "text/css".parse().unwrap()
-                        });
-                        let _ = request.respond(response);
-                    },
-                    Err(e) => {
-                        println!("{e:?}");
-                        let response = Response::empty(404);
-                        let _ = request.respond(response);
-                    }
-                }
-            } else {
-                let response = Response::empty(404);
-                let _ = request.respond(response);
-            },
-            "assets" => if parts.get(2).is_some() {
-                let pat = format!("{}/{}/{}", std::env::current_dir().unwrap().display(), parts[1], parts[2]);
-                match File::open(&pat) {
-                     Ok(file) => {
-                        let mut response = Response::from_file(file);
-                        let tmp = Path::new(&pat);
-                        // dbg!("{:?}", &tmp.extension());
-                        match tmp.extension() {
-                            Some(ext) => {
-                                response = match ext.to_str().unwrap() {
-                                    "png" => response.with_header(tiny_http::Header {
-                                        field: "Content-Type".parse().unwrap(),
-                                        value: "image/png".parse().unwrap(),
-                                    }),
-                                    "jpg" | "jpeg" => response.with_header(tiny_http::Header {
-                                        field: "Content-Type".parse().unwrap(),
-                                        value: "image/jpeg".parse().unwrap(),
-                                    }),
-                                    "webp" => response.with_header(tiny_http::Header {
-                                        field: "Content-Type".parse().unwrap(),
-                                        value: "image/webp".parse().unwrap(),
-                                    }),
-                                    _ => response.with_header(tiny_http::Header {
-                                        field: "Content-Type".parse().unwrap(),
-                                        value: "image/example".parse().unwrap(),
-                                    }),
-                                };
-                                let _ = request.respond(response);
-                            },
-                            None => {
-                                let response = Response::empty(400);
-                                let _ = request.respond(response);
-                            } 
+            }
+            "fonts" => {
+                if parts.get(2).is_some() && parts.get(3).is_some() {
+                    let pat = format!(
+                        "{}/{}/{}/{}",
+                        std::env::current_dir().unwrap().display(),
+                        parts[1],
+                        parts[2],
+                        parts[3]
+                    );
+                    match File::open(pat) {
+                        Ok(file) => {
+                            let mut response = Response::from_file(file);
+                            response = response.with_header(tiny_http::Header {
+                                field: "Content-Type".parse().unwrap(),
+                                value: "text/css".parse().unwrap(),
+                            });
+                            let _ = request.respond(response);
                         }
-                    },
-                    Err(e) => {
-                        println!("{e:?}");
-                        let response = Response::empty(404);
-                        let _ = request.respond(response);
+                        Err(e) => {
+                            println!("{e:?}");
+                            let response = Response::empty(404);
+                            let _ = request.respond(response);
+                        }
                     }
+                } else {
+                    let response = Response::empty(404);
+                    let _ = request.respond(response);
                 }
-            } else {
-                let response = Response::empty(404);
-                let _ = request.respond(response);
-            },
-            "projects" => if parts.get(2).is_some() {
-                let temp = parts[2].replace("%20", " ");
-                parts[2] = &temp;
-                let projs = project_handler.lock().unwrap();    
-                if projs.projects.iter().any(|p| p.title == parts[2]) {
-                    let html = construct_page(render_project(projs, parts[2]), parts[1]).into_string();
+            }
+            "css" => {
+                if parts.get(2).is_some() {
+                    let pat = format!(
+                        "{}/{}/{}",
+                        std::env::current_dir().unwrap().display(),
+                        parts[1],
+                        parts[2]
+                    );
+                    match File::open(pat) {
+                        Ok(file) => {
+                            let mut response = Response::from_file(file);
+                            response = response.with_header(tiny_http::Header {
+                                field: "Content-Type".parse().unwrap(),
+                                value: "text/css".parse().unwrap(),
+                            });
+                            let _ = request.respond(response);
+                        }
+                        Err(e) => {
+                            println!("{e:?}");
+                            let response = Response::empty(404);
+                            let _ = request.respond(response);
+                        }
+                    }
+                } else {
+                    let response = Response::empty(404);
+                    let _ = request.respond(response);
+                }
+            }
+            "assets" => {
+                if parts.get(2).is_some() {
+                    let pat = format!(
+                        "{}/{}/{}",
+                        std::env::current_dir().unwrap().display(),
+                        parts[1],
+                        parts[2]
+                    );
+                    match File::open(&pat) {
+                        Ok(file) => {
+                            let mut response = Response::from_file(file);
+                            let tmp = Path::new(&pat);
+                            match tmp.extension() {
+                                Some(ext) => {
+                                    response = match ext.to_str().unwrap() {
+                                        "png" => response.with_header(tiny_http::Header {
+                                            field: "Content-Type".parse().unwrap(),
+                                            value: "image/png".parse().unwrap(),
+                                        }),
+                                        "jpg" | "jpeg" => response.with_header(tiny_http::Header {
+                                            field: "Content-Type".parse().unwrap(),
+                                            value: "image/jpeg".parse().unwrap(),
+                                        }),
+                                        "webp" => response.with_header(tiny_http::Header {
+                                            field: "Content-Type".parse().unwrap(),
+                                            value: "image/webp".parse().unwrap(),
+                                        }),
+                                        _ => response.with_header(tiny_http::Header {
+                                            field: "Content-Type".parse().unwrap(),
+                                            value: "image/example".parse().unwrap(),
+                                        }),
+                                    };
+                                    let _ = request.respond(response);
+                                }
+                                None => {
+                                    let response = Response::empty(400);
+                                    let _ = request.respond(response);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            println!("{e:?}");
+                            let response = Response::empty(404);
+                            let _ = request.respond(response);
+                        }
+                    }
+                } else {
+                    let response = Response::empty(404);
+                    let _ = request.respond(response);
+                }
+            }
+            "projects" => {
+                if parts.get(2).is_some() {
+                    let temp = parts[2].replace("%20", " ");
+                    parts[2] = &temp;
+                    let projs = project_handler.read().unwrap();
+                    if projs.projects.iter().any(|p| p.title == parts[2]) {
+                        let html =
+                            construct_page(render_project(projs, parts[2]), parts[1]).into_string();
+                        let response = Response::from_string(html);
+                        let response = response.with_header(tiny_http::Header {
+                            field: "Content-Type".parse().unwrap(),
+                            value: AsciiString::from_ascii("text/html; charset=utf8").unwrap(),
+                        });
+                        let _ = request.respond(response);
+                    } else {
+                        serve_error(request, 404);
+                    }
+                } else {
+                    let html =
+                        construct_page(projects(project_handler.clone()), parts[1]).into_string();
                     let response = Response::from_string(html);
                     let response = response.with_header(tiny_http::Header {
                         field: "Content-Type".parse().unwrap(),
                         value: AsciiString::from_ascii("text/html; charset=utf8").unwrap(),
                     });
-                    let _ = request.respond(response);
-                } else {
-                    serve_error(request, 404);
-                }
-            } else {
-                let html = construct_page(projects(project_handler.clone()), parts[1]).into_string();
-                let response = Response::from_string(html);
-                let response = response.with_header(tiny_http::Header {
-                    field: "Content-Type".parse().unwrap(),
-                    value: AsciiString::from_ascii("text/html; charset=utf8").unwrap(),
-                });
 
-                let _ = request.respond(response);
-            },
+                    let _ = request.respond(response);
+                }
+            }
             "about" => {
                 let html = construct_page(about(), parts[1]).into_string();
                 let response = Response::from_string(html);
@@ -180,22 +222,24 @@ fn server_thread(server: Arc<Server>, project_handler: Arc<Mutex<ProjectHandler>
                 });
 
                 let _ = request.respond(response);
-            },
-            ".well-known" => if parts.get(2).is_some() {
-               if parts[2] == "discord" {
-                    let mut file = File::open("assets/discord").unwrap();
-                    let mut cont = String::new();
-                    file.read_to_string(&mut cont).unwrap();
-                    let response = Response::from_string(cont);
-                    let response = response.with_header(tiny_http::Header {
-                        field: "Content-Type".parse().unwrap(),
-                        value: AsciiString::from_ascii("text/html; charset=utf8").unwrap(),
-                    });
-                    let _ = request.respond(response);
-                } 
-            } else {
-                serve_error(request, 404);
-            },
+            }
+            ".well-known" => {
+                if parts.get(2).is_some() {
+                    if parts[2] == "discord" {
+                        let mut file = File::open("assets/discord").unwrap();
+                        let mut cont = String::new();
+                        file.read_to_string(&mut cont).unwrap();
+                        let response = Response::from_string(cont);
+                        let response = response.with_header(tiny_http::Header {
+                            field: "Content-Type".parse().unwrap(),
+                            value: AsciiString::from_ascii("text/html; charset=utf8").unwrap(),
+                        });
+                        let _ = request.respond(response);
+                    }
+                } else {
+                    serve_error(request, 404);
+                }
+            }
             _ => {
                 serve_error(request, 404);
             }
@@ -218,15 +262,15 @@ fn about() -> maud::Markup {
                         (maud::PreEscaped(comrak::markdown_to_html_with_plugins(&cont,
                             &comrak::Options::default(),
                             &plugins)))
-                    }    
+                    }
                 }
             }
-        },
-        Err(e) => error(404),
+        }
+        Err(_) => error(404),
     }
 }
 
-/// Inserts given html to a hard-coded template 
+/// Inserts given html to a hard-coded template
 fn construct_page(content: maud::Markup, url: &str) -> maud::Markup {
     html! {
         (maud::DOCTYPE)
@@ -276,7 +320,7 @@ fn navbar(active_page: &str) -> maud::Markup {
                 } @else {
                     a href="/about" {"About"}
                 }
-            }  
+            }
         }
         hr;
     }
@@ -284,14 +328,21 @@ fn navbar(active_page: &str) -> maud::Markup {
 
 fn index() -> maud::Markup {
     html! {
-       
+
         h1."c" { "Kitten.rs" }
         h2."c" { "Under Construction" }
     }
 }
 
-fn render_project(project_handler: MutexGuard<ProjectHandler>, project_title: &str) -> maud::Markup {
-    let project = project_handler.projects.iter().filter(|p| p.title.eq(project_title)).collect::<Vec<&projects::Project>>();
+fn render_project(
+    project_handler: RwLockReadGuard<ProjectHandler>,
+    project_title: &str,
+) -> maud::Markup {
+    let project = project_handler
+        .projects
+        .iter()
+        .filter(|p| p.title.eq(project_title))
+        .collect::<Vec<&projects::Project>>();
     let project = project.first().unwrap();
     html! {
 
@@ -308,8 +359,10 @@ fn render_project(project_handler: MutexGuard<ProjectHandler>, project_title: &s
     }
 }
 
-fn projects(project_handler: Arc<Mutex<ProjectHandler>>) -> maud::Markup {
-    let project_bind = project_handler.lock().expect("Could not unlock project handler mutex");
+fn projects(project_handler: Arc<RwLock<ProjectHandler>>) -> maud::Markup {
+    let project_bind = project_handler
+        .read()
+        .expect("Could not unlock project handler mutex");
     html! {
         @for proj in &project_bind.projects {
             div."content" {
@@ -329,7 +382,7 @@ fn projects(project_handler: Arc<Mutex<ProjectHandler>>) -> maud::Markup {
 }
 
 fn error(code: u16) -> maud::Markup {
-    html!{div."error" {
+    html! {div."error" {
             h1 { (code) }
         }
     }
@@ -340,10 +393,9 @@ fn serve_error(request: Request, code: u16) {
     let mut resp = Response::from_string(html);
     resp = resp.with_status_code(404);
     resp = resp.with_header(tiny_http::Header {
-                    field: "Content-Type".parse().unwrap(),
-                    value: AsciiString::from_ascii("text/html; charset=utf8").unwrap(),
-                });
-
+        field: "Content-Type".parse().unwrap(),
+        value: AsciiString::from_ascii("text/html; charset=utf8").unwrap(),
+    });
 
     let _ = request.respond(resp);
 }
