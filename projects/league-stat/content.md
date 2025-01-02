@@ -64,9 +64,10 @@ their summoner name. I probably could have fixed this, but the codebase was a me
 API code causing the rewrite to be mentally draining to even think about.
 
 Implementing player searching was fairly trivial, the only problem was due to me re-using the old HTML as it only had
-a single text input when both the username and tagline need to be inputted. The solution to this was fairly trivial and
+a single text input when both the username and tagline need to be inputted. The solution to this was quite simple and
 involved splitting the input at "#", then checking if the tag exists, and 404'ing if anything *freaky* occured. Not the
 greatest solution, but it should be robust enough to ship.
+
 
 ## Summoner Profiles
 Following with the theme of the previous section, my main problem whilst adding profiles was due to me re-using old HTML
