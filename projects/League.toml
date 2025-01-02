@@ -1,5 +1,4 @@
-title = "League Stat Tracker"
-timestamp = 1729989247376
-summary = "My adventure in creating a stat tracker for league of legends"
-content = "projects/league-stat/content.md"
-image = "/assets/lilith.jpg"
+title = "Tracking players on League of Legends"
+timestamp = 1
+summary = "My personal endeavour to create a tracker that allows me to better effectively flame my friends :3"
+content = "projects/league/content.md"
