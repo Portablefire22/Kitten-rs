@@ -13,7 +13,7 @@ use projects::ProjectHandler;
 use tiny_http::{Request, Response, Server};
 
 fn main() {
-    let server = Arc::new(Server::http("0.0.0.0:8080").unwrap());
+    let server = Arc::new(Server::http("0.0.0.0:8000").unwrap());
 
     let project_handler = Arc::new(RwLock::new(ProjectHandler::new()));
     project_handler
@@ -24,7 +24,7 @@ fn main() {
     let mut handles = Vec::new();
 
     for thread_number in 0..std::thread::available_parallelism()
-        .expect("Failed to get available paralleism")
+        .expect("Failed to get available parallelism")
         .into()
     {
         println!("Starting thread: {thread_number}");
@@ -274,8 +274,8 @@ fn about() -> maud::Markup {
 fn construct_page(content: maud::Markup, url: &str) -> maud::Markup {
     html! {
         (maud::DOCTYPE)
+        link rel="preload stylesheet" href="/css/styles.css" as="style" type="text/css" crossorigin="anonymous";
         body {
-            link rel="preload stylesheet" href="/css/styles.css" as="style" type="text/css" crossorigin="anonymous";
             title {"Kitten.rs"};
             (navbar(url))
             (content)
