@@ -17,7 +17,7 @@ reveals everything you could ever want, as long as your wants are limited to a v
 of information related to a specific object, and it only currently slightly breaks the design of the 
 application :D
 
-![Version 0\.2\.0 ]()
+![Version 0\.2\.0 ](/assets/amf-object-inspector-v0.2.png)
 
 ## How It Works
 
