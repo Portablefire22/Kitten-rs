@@ -57,7 +57,7 @@ Some things were written after, some written before, and some written during. Th
 will likely be ordered in the popular sorting method of "whichever I remembered doing first", 
 whilst stuff written during - or yet to be even created - will be roughly in order. 
 
-## Login 
+### Login 
 
 First things first, this was not the first thing to be done - in fact it was added quite 
 late into the library - but it's the best for simplicity since everything requires a 
@@ -78,3 +78,36 @@ with the user's login token.
 
 At the time of writing I haven't quite figured out Captchas yet so that'll be a problem for 
 future me, and an explanation for later sections.
+
+### Reading Messages 
+
+*"If you wish to make an apple pie from scratch, you must first invent the universe." - Carl Sagan*
+
+Reading messages turned out to be quite the investment, like twelve files of various structs 
+produced by slogging through Discord documentation. Most of them made sense - messages require 
+an author so I had to create a user structure - but messages needed channels to be defined, which 
+ended up requiring: guilds, emojis, embeds, reactions, roles, stickers, threads, attachments, 
+and applications just to receive a channel's messages from the API. Retrieving the messages 
+from the API after defining the structure was as easy as submitting a get request to 
+`https://discord.com/api/v9/channels/<channel id>` with the token attached to the request 
+headers - more information when the 'Client' is discussed for the API - and parsing the 
+response JSON to the defined message structure. Receiving messages when they've been sent 
+isn't quite as simple - I mean I *could* just set a task to retrieve messages every few 
+seconds - with the correct method being to setup a websocket connection to listen for 
+message events and process the incoming stream. That's for later me and will be discussed 
+when 'Gateway' is discussed in the API.
+
+![Screenshot of messages in application](/assets/meow-messages.png)
+*Screenshot of retrieved messages in a prototype UI*
+
+### Sending Messages 
+
+Likewise with reading messages, sending messages first required a significant amount of 
+structures to hold the required data for sending messages. Thankfully though the 
+structures required are also the structures for reading messages so we don't actually have 
+to do anything special. Infact, all sending a message requires is defining the channel id to 
+send to, defining the content to send, and then wrapping it in some JSON that gets sent 
+via a POST request to `https://discord.com/api/v9/channels/<channel id>`, reading the 
+response for a Message object or error message/status code to determine if it was 
+sent successfully.
+
