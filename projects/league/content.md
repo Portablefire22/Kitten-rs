@@ -373,68 +373,134 @@ information whilst also separating data in a way that allows for analysis later 
 good at doing this, especially since this'll be my first time attempting anything like this :D
 
 #### Basic Account Information
-Basic account information will be held within a **summoners** table, this table will contain: 
-accountId, gameName, tagLine, puuid, region, profileIcon, accountLevel, rankedTier, rankedDivision, 
-and LP (ranked data being duplicated for solo and flex). This table will mainly be for 
-populating the basic data for a profile, which often does not need to be updated much. 
+Basic account information should hold all of the data required for creating a simple profile 
+page, it doesn't need any match history or analysis, and therefore only requires data 
+such as their name, tag, id, or icon but also current ranked information. The ranked information 
+stored only corresponds to their tier, division, and LP, anything like their current ranked 
+league name (most people don't even know this exists) or promotion status (removed 1.5
+years ago) will be ignored.
 
+I'm not an SQL pro, I'm basically just googling anything that isn't VARCHAR or INT, pls 
+no flame :3
+```SQL
+create table summoners {
+  id SERIAL PRIMARY KEY,
+  accountId NVARCHAR(32),
+  gameName NVARCHAR(24) NOT NULL,
+  tagLine NVARCHAR(8) NOT NULL,
+  puuid NVARCHAR(64) NOT NULL,
+  [region] NVARCHAR(8) NOT NULL CHECK ([region] IN ('BR1', 'EUN1', 'EUW1', 'JP1', 'KR', 'LA1', 'LA2', 'ME1', 'NA1', 'OC1', 'PH2', 'RU', 'SG2', 'TH2', 'TR1', 'TW2', 'VN2')) DEFAULT 'EUW1',
+  profileIcon INT DEFAULT 0,
+  level INT DEFAULT 0,
+
+  soloTier NVARCHAR[12] NOT NULL DEFAULT 'UNRANKED', 
+  CONSTRAINT solo_tier_check CHECK (soloTier IN ('UNRANKED', 'IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER')),
+  soloDivision TINYINT NOT NULL DEFAULT 0,
+  CONSTRAINT solo_division_check CHECK (soloDivision >= 0 AND soloDivision <= 4),
+  soloLp TINYINT NOT NULL DEFAULT 0,
+  CONSTRAINT solo_lp_check CHECK (soloLp <= 100),
+
+  flexTier NVARCHAR[12] NOT NULL DEFAULT 'UNRANKED', 
+  CONSTRAINT flex_tier_check CHECK (flexTier IN ('UNRANKED', 'IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER')),
+  flexDivision TINYINT NOT NULL DEFAULT 0,
+  CONSTRAINT flex_division_check CHECK (flexDivision >= 0 AND flexDivision <= 4),
+  flexLp TINYINT NOT NULL DEFAULT 0,
+  CONSTRAINT flex_lp_check CHECK (flexLp <= 100),
+}
+```
 ### League Point History 
 Statistic websites for League seem to all have LP history as an option, if I hope to have this 
-as a feature then I'll need to start early to allow for the history to build. To facilitate the 
-creation of this history feature, I've decided to add create a lpHistory table that'll contain 
-all records of a player's LP when their profile is updated. This table will contain the 
-queue, rankedTier, rankedDivision, lp, wins, losses, and the timestamp of the record's creation.
-Hopefully this data will be enough to build a comprehensive history of a player's LP history, 
-maybe the updating of the LP could be automated for VIP's such as my own accounts or a friends 
-so that the LP graph can be as detailed as possible.
+as a feature then I'll need to start early to allow for the history to build. Facilitating the 
+creation of this history feature requires the creation of a lpHistory table that'll contain 
+all records of a player's LP, adding a new record whenever their profile is updated. This table 
+will contain the queue, rankedTier, rankedDivision, lp, wins, losses, and the timestamp of the 
+record's creation. Hopefully this data will be enough to build a comprehensive history of a 
+player's LP history, maybe the updating of the LP could be automated for VIP's such as my own 
+accounts or a friends so that the LP graph can be as detailed as possible.
 
+```SQL
+create table lpHistory {
+  id SERIAL PRIMARY KEY,
+  queue NVCHAR(32) NOT NULL DEFAULT 'RANKED_SOLO_5X5'
+  CONSTRAINT queue_check CHECK (queue IN ('RANKED_SOLO_5X5', "RANKED_FLEX_SR", "RANKED_FLEX_TT"))
+  tier NVARCHAR[12] NOT NULL DEFAULT 'UNRANKED', 
+  CONSTRAINT tier_check CHECK (tier IN ('UNRANKED', 'IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER')),
+  division TINYINT NOT NULL DEFAULT 0,
+  CONSTRAINT division_check CHECK (division >= 0 AND division <= 4),
+  lp TINYINT NOT NULL DEFAULT 0,
+  CONSTRAINT lp_check CHECK (lp <= 100),
+  win INT NOT NULL DEFAULT 0,
+  CONSTRAINT win_check CHECK (win >= 0),
+  loss INT NOT NULL DEFAULT 0,
+  CONSTRAINT loss_check CHECK (loss >= 0),
+  time TIMESTAMP,
+}
+```
 ### Match History 
 Match history will be stored as a simple table that contains only the simple data, basically:
 matchId, gameResult, gameCreation timestamp, gameDuation, gameEnd timestamp, gameId, gameMode, 
 mapId, platformId, queueId, team_n_0-9 by summoner ID, tournamentCode (if 
 present).
-It could probably be condensed but I'm just going near 1:1 from the struct below to the 
-database table.
-```Rust 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Match {
-    pub metadata: Metadata,
-    pub info: Info,
-}
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Metadata {
-    pub data_version: String,
-    pub match_id: String,
-    pub participants: Vec<String>,
-}
+It could probably be condensed but I'm just going near 1:1 from the API data to the 
+table.
+```SQL
+create table matches {
+  id SERIAL PRIMARY KEY,
+  matchId VARCHAR(64) NOT NULL,
+  platformId VARCHAR(64) NOT NULL,
+  queueId VARCHAR(64) NOT NULL,
+  gameId VARCHAR(64) NOT NULL,
+  endOfGameResult NVCHAR(32) NOT NULL,
+  gameCreation DATETIME NOT NULL,
+  gameDuration TIME NOT NULL,
+  gameEndTimestamp DATETIME NOT NULL,
+  gameMode NVARCHAR(64) NOT NULL,
+  mapId NVARCHAR(64) NOT NULL,
+  team0Participant0 NVARCHAR(64) NOT NULL,
+  team0Participant1 NVARCHAR(64) NOT NULL,
+  team0Participant2 NVARCHAR(64) NOT NULL,
+  team0Participant3 NVARCHAR(64) NOT NULL,
+  team0Participant4 NVARCHAR(64) NOT NULL,
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Info {
-    #[serde(rename = "endOfGameResult")]
-    pub end_of_game_result: String,
-    #[serde(rename = "gameCreation")]
-    pub game_creation: u64,
-    #[serde(rename = "gameDuration")]
-    pub game_duration: u64,
-    #[serde(rename = "gameEndTimestamp")]
-    pub game_end_timestamp: Option<u64>,
-    #[serde(rename = "gameId")]
-    pub game_id: u64,
-    #[serde(rename = "gameMode")]
-    pub game_mode: String,
-    #[serde(rename = "mapId")]
-    pub map_id: i64,
-    pub participants: Vec<Participant>,
-    #[serde(rename = "platformId")]
-    pub platform_id: String,
-    #[serde(rename = "queueId")]
-    pub queue_id: i64,
-    pub teams: Vec<Team>,
-    #[serde(rename = "tournamentCode")]
-    pub tournament_code: Option<String>,
-}
+  team1Participant0 NVARCHAR(64) NOT NULL,
+  team1Participant1 NVARCHAR(64) NOT NULL,
+  team1Participant2 NVARCHAR(64) NOT NULL,
+  team1Participant3 NVARCHAR(64) NOT NULL,
+  team1Participant4 NVARCHAR(64) NOT NULL,
+  tournamentCode NVARCHAR(64),
+  CONSTRAINT `match_participant_0`
+    FOREIGN KEY (team0Participant0_id) REFERENCES summoners (puuid),
+
+  CONSTRAINT `match_participant_1`
+    FOREIGN KEY (team0Participant1_id) REFERENCES summoners (puuid),
+
+  CONSTRAINT `match_participant_2`
+    FOREIGN KEY (team0Participant2_id) REFERENCES summoners (puuid),
+
+  CONSTRAINT `match_participant_3`
+    FOREIGN KEY (team0Participant3_id) REFERENCES summoners (puuid),
+
+  CONSTRAINT `match_participant_4`
+    FOREIGN KEY (team0Participant4_id) REFERENCES summoners (puuid),
+
+  CONSTRAINT `match_participant_5`
+    FOREIGN KEY (team1Participant0_id) REFERENCES summoners (puuid),
+
+  CONSTRAINT `match_participant_6`
+    FOREIGN KEY (team1Participant1_id) REFERENCES summoners (puuid),
+
+  CONSTRAINT `match_participant_7`
+    FOREIGN KEY (team1Participant2_id) REFERENCES summoners (puuid),
+
+  CONSTRAINT `match_participant_8`
+    FOREIGN KEY (team1Participant3_id) REFERENCES summoners (puuid),
+
+  CONSTRAINT `match_participant_9`
+    FOREIGN KEY (team1Participant4_id) REFERENCES summoners (puuid),
+
+
+} ENGINE = InnoDB;
 ```
 
 ### Match Participants 
