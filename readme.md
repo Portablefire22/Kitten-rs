@@ -12,7 +12,8 @@ project is contained within its own directory, any projects that have multiple p
 **probably** contained within a single folder, and the only real exception is the about 
 page since that is just a free-standing "about.md" file. 
 
-A fair warning, any non-visible projects are excluded
+A fair warning, any non-visible projects are excluded for a reason and are either: garbage,
+unfinished, crude, and most likely all of the above.
 
 I should probably update the site to something a bit more modern on the backend, but 
 something about the simplicity speaks to me and I don't know if I want to get rid of that 
