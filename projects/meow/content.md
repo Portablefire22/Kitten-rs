@@ -50,12 +50,31 @@ found on the [GitHub repo](https://github.com/Portablefire22/discord-rs); I woul
 you don't actually use this since other libaries are more developed, but it *might* be helpful
 for following along or creating your own library.
 
-# Creating the Project 
+# Writing style, or "Writing is painful" 
 
 From this point onward, the discussion will be written in a manner where time has no meaning. 
 Some things were written after, some written before, and some written during. Things written after 
 will likely be ordered in the popular sorting method of "whichever I remembered doing first", 
 whilst stuff written during - or yet to be even created - will be roughly in order. 
+
+# API library
+
+API libraries and GUIs should never require eachother to function, yeah the GUI might do some 
+wizardry to display information and the API might be called by the GUI but I feel like 
+they should stay in their own lane. Not only is this approach possible, it's the approach 
+already taken by the application. Separating the front-end and back-end is just this approach 
+but forced by Tauri's architecture, components on the front-end render with data they request 
+and functions in the back-end deliver the data in the correct format. The backend could be 
+entirely replaced but the program would still function as long as the data is formatted correctly; 
+it might sound quite obvious but I've made the mistake of not separating the two on a 
+web dev project and it was not fun. 
+
+So to take it one step further the API library will be created with the intention that it could 
+just be used as a standalone library for Discord bots/userbots. As per this requirement, the 
+library will need to automatically deal with things like heartbeats or websocket connections 
+that allow Discord clients to interface with the servers.
+
+## REST
 
 ### Login 
 
@@ -110,4 +129,13 @@ send to, defining the content to send, and then wrapping it in some JSON that ge
 via a POST request to `https://discord.com/api/v9/channels/<channel id>`, reading the 
 response for a Message object or error message/status code to determine if it was 
 sent successfully.
+
+## Gateway 
+
+Discord supplements their REST API with a WebSocket connection dubbed the 
+"[Gateway API](https://discord.com/developers/docs/events/gateway)", these sockets 
+are basically just there for the Discord servers to tell the client when something  
+happened, e.g. Message Receive events.   
+
+# React UI
 
