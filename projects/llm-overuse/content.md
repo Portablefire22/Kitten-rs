@@ -32,7 +32,7 @@ began to rear its ugly head in recent times with the introduction of LLMs.
 Googling - the act of using a search engine such as Google, Bing, or Duckduckgo 
 to retrieve information - is an art form, the tools provided by Google allow 
 anywhere from the broadest of searches to the most narrow 1 result search you 
-could think of. Don't believe me? Google '<MOVIE NAME> intitle:"index of"' and 
+could think of. Don't believe me? Google '\<MOVIE NAME\> intitle:"index of"' and 
 you'll find people's public file servers that just contain rips of movies, 
 explore a few of them and you'll probably find one that is viewable right in the 
 browser. Researching something old and you only get garbage new pages discussing 
@@ -168,7 +168,7 @@ For context, I have been slowly working on recreating the old servers for the Ad
 League of Legends client and have gained knowledge of how a lot of it functions. Most 
 of my knowledge has come from reading old GitHub repos, reading packets from the Client 
 as it attempts to communicate with dead servers, and just plain old luck when I've guessed 
-the functionality of random functionality. Some libraries I'm using have been ripped directly 
+the functionality of random modules. Some libraries I'm using have been ripped directly 
 from the Adobe AIR client itself and some information is from decompiling the included SWF files. 
 Through this I've gained enough knowledge to at least know when something is wrong when it comes 
 to how the Adobe Air client functions and how one would go about recreating the backend for it.
@@ -343,4 +343,4 @@ responses as Gospel. Those who need correct and concise information most are bei
 terrible advice the second they deviate from the most common path just because these algorithms 
 would rather lie than admit they're wrong.
 
-## Tutorial Hell 
+## Tutorial Hell and Its Evolution 
