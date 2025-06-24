@@ -260,3 +260,85 @@ to WGSL and I have that shape now rendering on my screen. In testing I added the
 Now all I have to do is "just" implement some form of camera movement/control and 
 a way of sending voxel data to the GPU for it to render with a cube SDF. A few sections 
 for you no doubt, hours or maybe days for me :)
+
+I was getting bored of the simple flat lighting and wanted something with a tiny bit 
+more deatil, so I read through 
+[Maxime Heckel's "Painting With Math"](https://blog.maximeheckel.com/posts/painting-with-math-a-gentle-study-of-raymarching/) 
+blog post to add a simple form of diffuse lighting to my scene in the hope that it would 
+provide more visual information. It's a bit weird on boxes but seems to work perfectly 
+on spheres and provides just enough visual information to be useful for my usecase.
+
+![diffuse lighting](/assets/voxel-light.png)
+
+# Creating the Scene 
+
+A cube and sphere aren't all that interesting so it's probably best that I implement a 
+voxel scene to render to. 
+
+## Octree
+
+Marching our rays through a scene would get massively expensive as more objects get 
+added to the screen, we'd basically have to query every object in VRAM for their 
+distance to the ray every time we march. The solution to this is to use a tree 
+data structure that allows us to group voxels by their position, and only query 
+voxels that are within nodes that the ray is currently intersecting. I am certain there 
+are plenty of data structures that would accomplish this but the general approach seems 
+to be using an "Octree" to create a "Sparse Voxel Octree" for containing voxel data 
+for raymarching/tracing. Nvidia basically wrote the book on Sparse Voxel Octrees - 
+henceforth referred to as SVOs - in their paper ["Efficient Sparse Voxel Octrees - 
+Anaylsis, Extensions, and Implementation](https://research.nvidia.com/sites/default/files/pubs/2010-02_Efficient-Sparse-Voxel/laine2010tr1_paper.pdf)
+where they discuss the differences between triangle-based geometry and voxel-based 
+geometries and how SVOs function. 
+
+Okay now we've done the "informational" section, let's switch to the part where I 
+actively lose my mind from being heavily skill-issued. As of writing - 2025-06-24 - 
+I am completely confused as to how to write an octree that fuffils the criteria of 
+being written in Rust, and existing in a manner that can be represented on the GPU. 
+It doesn't seem like it'd be that difficult - especially since it's just copying 
+data from the CPU side to the GPU and that's something we've already done with 
+the view texture - but WGSL just doesn't support recursive data types and I 
+don't know how to implement an Octree in a non-recursive manner. I see people 
+mention using 3D textures but they don't elaborate much further than that, idk 
+I guess the next section will be when I finally understand and can explain it?
+
+### The Approach
+
+I'm going into this nearly blind, like I have read a few Nvidia articles and 
+maybe a few blog posts to get this knowledge. Working off section 
+"37.1.2 Implementation" from 
+[Nvidia's GPU Gems 2](https://developer.nvidia.com/gpugems/gpugems2/part-v-image-oriented-computing/chapter-37-octree-textures-gpu)
+has given me the rough idea of how to create an Octree implementation that can 
+exist on the GPU. A quick synposis of the approach is basically to create a buffer 
+that contains all Octree data - this data contains all information for nodes and 
+data from leafs - and should be completely accessible by using array indices in 
+place of traditional pointers on children nodes. Probably a garbage explination so 
+I'll come back through at the end to explain it better, if you're seeing this then 
+I forgot to do that or I concluded that this explanation was good enough.
+
+Welp, time to implement this shit in Rust :)
+
+### Creating A Tree In Rust 
+
+Tree structures are questionable in Rust due to the borrow checker and the complete 
+lack of traditional pointers making recursive types a pain to implement, don't 
+believe me? Look at how you impement a linked list in rust - it's not a tree 
+structure but it gets the point across that traditional data structures are a 
+pain to implement. With this in mind, I think I'll try to implement the Rust side 
+of things like how the GPU will store the data so that CPU-side conversions 
+will not be required. This part is actually kind of fun because both you and I 
+don't actually know the outcome of this approach without skipping ahead.
+
+The implementation in the book is intended for applying a texture to an object via 
+an octree and therefore only makes use of the RGBA channels of an image texture. This 
+isn't what I want but the underlying theory ***should*** be enough for me to create a 
+version that holds actual Voxel data that I require - not sure what the Voxel data 
+is right now but I don't see why it couldn't be expandable.
+
+I've decided to use 32-bit unsigned integers for holding the data in the array for a 
+simple reason, the first 24 bits can be used to hold the RGB values of each voxel - 
+I don't intend to use textures on voxels in this engine since I want the voxels 
+themselves to texturise the environment - and the final 8 bits can be used as a 
+bit field to handle the appearance of each voxel. The final 8 bits might not sound like 
+much but they could be configured to hold 8 individual toggles or expanded so that an 
+exclusive toggle has access to 7 bits of data. This system is not final but *seems* 
+like it should provide enough for simple rendering :)
