@@ -268,7 +268,8 @@ blog post to add a simple form of diffuse lighting to my scene in the hope that 
 provide more visual information. It's a bit weird on boxes but seems to work perfectly 
 on spheres and provides just enough visual information to be useful for my usecase.
 
-![diffuse lighting](/assets/voxel-light.png)
+[![diffuse lighting video](http://img.youtube.com/vi/4Y8m1Xma1NY/0.jpg)](http://www.youtube.com/watch?v=4Y8m1Xma1NY "2025 06 24 21 06 47")
+*The above image should link to a video*
 
 # Creating the Scene 
 
@@ -340,5 +341,73 @@ I don't intend to use textures on voxels in this engine since I want the voxels
 themselves to texturise the environment - and the final 8 bits can be used as a 
 bit field to handle the appearance of each voxel. The final 8 bits might not sound like 
 much but they could be configured to hold 8 individual toggles or expanded so that an 
-exclusive toggle has access to 7 bits of data. This system is not final but *seems* 
-like it should provide enough for simple rendering :)
+exclusive toggle has access to 7 bits of data. This system is not final but it *seems* 
+like it should provide enough for simple rendering :) Furthermore, the nice part of using 
+this system is that u32's should theoretically allow for an octree with 4,294,967,295 
+leafs, which should be more than enough for what we need since adapting a previous 
+project to use this system would allow for 131,071 32x32x32 chunks to be in a single 
+octree.
+
+Some quick face-rolling on the keyboard and I come up with the following data types:
+
+```rust
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum NodeType {
+    Leaf(u32),
+    Node(u32),
+}
+
+pub(crate) struct LeafData {
+    colour: [u8; 3],
+    transparent: bool,
+}
+
+impl Into<u32> for LeafData {
+    fn into(self) -> u32 {
+        ((self.colour[0] as u32) << 16) 
+            & ((self.colour[1] as u32) << 8) 
+            & (self.colour[2] as u32) 
+            & ((self.transparent as u32) << 7)
+    }
+}
+
+impl Into<u32> for NodeType {
+    fn into(self) -> u32 {
+        match self {
+            NodeType::Leaf(data) => data.into(),
+            NodeType::Node(index) => index,
+        }
+    }
+}
+
+pub(crate) struct Octree {
+    data: Vec<NodeType>,
+    position: Vec<f32>,
+}
+
+impl Into<Vec<u32>> for Octree {
+    fn into(self) -> Vec<u32> {
+        self.data.iter().map(|x| (*x).into()).collect()   
+    }
+}
+```
+
+Writing this section has made me realise that there is actually no way to determine 
+if an entry is an index or leaf so let's fix that by just making the right most bit 
+determine wether to use the value as an index or not. Simple change, it just means 
+we now only have 31 bits for the array index and only 7 bits for the data bit field.
+Since nodes are going to be the most common I opted to make a value of '1' indicate 
+that the value points to another node on the octree. I hate future me so I've opted 
+to just cutoff the final bit of Leaf nodes and deal with the consequences later.
+
+```rust
+impl Into<u32> for NodeType {
+    fn into(self) -> u32 {
+        match self {
+            NodeType::Leaf(data) => (u32::from(data) & 0xFE) ,
+            NodeType::Node(index) => (index | 1),
+        }
+    }
+}
+```
